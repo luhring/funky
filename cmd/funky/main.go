@@ -23,6 +23,7 @@ THE SOFTWARE.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -38,22 +39,20 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "funky",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Go linter for functional programming",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.New("must provide a single argument for the directory to analyze")
+		}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) {
 		directory := args[0]
 
 		err := native.AnalyzeDirectory(directory)
 		if err != nil {
-			panic(err)
+			return err
 		}
+
+		return nil
 	},
 }
 
@@ -74,10 +73,6 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.funky.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.
