@@ -40,8 +40,6 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 
 	switch n := node.(type) {
 	case *ast.Package:
-		// TODO: Make a decision on how to handle imports
-
 		files := SortedFilesFromPackage(n)
 
 		// determine declarations in package scope
@@ -53,10 +51,11 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 		}
 
 	case *ast.File:
-		// No new scope to gather
+		fileScope := scope.WithImports(s, n.Imports)
+
 		// Walk child nodes of file -> top-level declarations
 		for _, decl := range n.Decls {
-			Walk(v, decl, s)
+			Walk(v, decl, fileScope)
 		}
 
 	case *ast.FuncDecl:

@@ -96,7 +96,23 @@ func mutationsFromAssignments(assignments []assignment.Assignment, n ast.Node, s
 }
 
 func isMutation(a assignment.Assignment, s scope.Scope) bool {
-	return a.Ident.Name != "_" && !assignment.IsDefinition(a) || scope.InCurrent(s, a.Ident)
+	return !isDeclaration(a, s) && !funkyAST.BlankIdentifier(a.Ident)
+}
+
+func isDeclaration(a assignment.Assignment, s scope.Scope) bool {
+	return !funkyAST.BlankIdentifier(a.Ident) &&
+		!isFromImportedPackage(a.Ident, s) &&
+		assignment.IsDefinition(a) &&
+		!scope.InCurrent(s, a.Ident)
+}
+
+func isFromImportedPackage(expr ast.Expr, s scope.Scope) bool {
+	ident := funkyAST.SelectorIdentFromExpr(expr)
+	if ident == nil {
+		return false
+	}
+
+	return scope.HasImport(s, ident.Name)
 }
 
 // varName returns the name of the variable being mutated

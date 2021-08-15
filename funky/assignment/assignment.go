@@ -16,7 +16,7 @@ type Assignment struct {
 }
 
 func IsDefinition(a Assignment) bool {
-	return a.Token == token.DEFINE
+	return a.Token == token.DEFINE && !funkyAST.BlankIdentifier(a.Ident)
 }
 
 func AssignmentsFromStmt(stmt *ast.AssignStmt) []Assignment {
@@ -24,9 +24,6 @@ func AssignmentsFromStmt(stmt *ast.AssignStmt) []Assignment {
 
 	for lhsIndex, expr := range stmt.Lhs {
 		ident := funkyAST.IdentFromExpr(expr)
-		if ident == nil {
-			continue
-		}
 
 		newValueExpr := assignedValueExpr(stmt.Rhs, lhsIndex)
 

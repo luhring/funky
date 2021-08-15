@@ -196,15 +196,15 @@ func blockStmt() {
 
 	{
 		x = 1 // mutation
-		x := 2
-		print(x)
+		x, y := 2, 3
+		print(x, y)
 		x = 3 // mutation
 	}
 }
 
 func otherPackage() {
-	other.MyVar = "changed" // not a mutation
-	MyVar := "value"
+	other.MyVar = "changed" // mutation
+	MyVar := "value" // not a mutation
 	print(MyVar)
 }
 

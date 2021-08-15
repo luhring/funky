@@ -1,6 +1,7 @@
 package mutation
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -143,6 +144,11 @@ func TestFindInFiles(t *testing.T) {
 			newValueRendered: "3",
 		},
 		{
+			location:         "testdata/mixed/main.go:206:2",
+			variableName:     "other.MyVar",
+			newValueRendered: "\"changed\"",
+		},
+		{
 			location:         "testdata/mixed/main.go:214:2",
 			variableName:     "a",
 			newValueRendered: "5",
@@ -201,15 +207,19 @@ func assertEqualTestableMutationSets(t *testing.T, expected, actual testableMuta
 
 	for mutation := range expected {
 		if _, exists := actual[mutation]; !exists {
-			t.Errorf("expected mutation was absent: %+v", mutation)
+			t.Errorf("expected mutation was absent: %s", reportMutation(mutation))
 		}
 	}
 
 	for mutation := range actual {
 		if _, exists := expected[mutation]; !exists {
-			t.Errorf("unexpected mutation was present: %+v", mutation)
+			t.Errorf("unexpected mutation was present: %s", reportMutation(mutation))
 		}
 	}
+}
+
+func reportMutation(m testableMutation) string {
+	return fmt.Sprintf("%s —— %q -> %s", m.location, m.variableName, m.newValueRendered)
 }
 
 // TODO: move to more general location
@@ -247,7 +257,7 @@ func mapToTestableMutation(mutation Mutation, fset *token.FileSet) testableMutat
 
 	return testableMutation{
 		location:         location,
-		variableName:     funkyAST.IdentFromExpr(mutation.mutatedVarExpr).Name,
+		variableName:     funkyAST.Render(mutation.mutatedVarExpr, fset),
 		newValueRendered: funkyAST.Render(mutation.newValueExpr, fset),
 	}
 }

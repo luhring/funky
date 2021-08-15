@@ -1,10 +1,14 @@
 package scope
 
-import "go/ast"
+import (
+	"go/ast"
+	"path"
+)
 
 type Scope struct {
 	current declarationSet
 	outer   declarationSet
+	imports []string
 }
 
 func New() Scope {
@@ -17,6 +21,7 @@ func Copy(s Scope) Scope {
 	return Scope{
 		current: s.current.copy(),
 		outer:   s.outer.copy(),
+		imports: s.imports,
 	}
 }
 
@@ -24,7 +29,30 @@ func Append(s Scope, identities ...*ast.Ident) Scope {
 	return Scope{
 		current: add(s.current, identities...),
 		outer:   s.outer.copy(),
+		imports: s.imports,
 	}
+}
+
+func WithImports(s Scope, imports []*ast.ImportSpec) Scope {
+	var imported []string
+
+	for _, spec := range imports {
+		imported = append(imported, importName(spec))
+	}
+
+	return Scope{
+		current: s.current.copy(),
+		outer:   s.outer.copy(),
+		imports: imported,
+	}
+}
+
+func importName(spec *ast.ImportSpec) string {
+	if spec.Name != nil {
+		return spec.Name.Name
+	}
+
+	return path.Base(spec.Path.Value)
 }
 
 func NewInsideExisting(existing Scope) Scope {
@@ -37,6 +65,7 @@ func NewInsideExisting(existing Scope) Scope {
 	return Scope{
 		current: current,
 		outer:   outer,
+		imports: existing.imports,
 	}
 }
 
@@ -67,4 +96,14 @@ func FromFiles(files []*ast.File) Scope {
 
 func InCurrent(s Scope, identity *ast.Ident) bool {
 	return s.current.contains(identity)
+}
+
+func HasImport(s Scope, name string) bool {
+	for _, scopeImport := range s.imports {
+		if scopeImport == name {
+			return true
+		}
+	}
+
+	return false
 }
