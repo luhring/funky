@@ -36,7 +36,9 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 
 	s := scope.Copy(existingScope)
 
-	// TODO: consider nil check for node
+	if node == nil {
+		return
+	}
 
 	switch n := node.(type) {
 	case *ast.Package:
@@ -74,17 +76,17 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 
 		// Walk child notes of function -> body
 		if funcBody := n.Body; funcBody != nil {
-			Walk(v, funcBody, funcScope)
+			walkStmtList(v, funcBody.List, funcScope)
 		}
 
 	case *ast.BlockStmt:
-		blockStmtScope := scope.NewInsideExisting(s)
-		walkStmtList(v, n.List, blockStmtScope)
+		// blockStmtScope := scope.NewInsideExisting(s)
+		walkStmtList(v, n.List, s)
 
 	case *ast.ForStmt:
 		// grab new scope from init stmt
 		if n.Init == nil {
-			walkBlockStmt(v, n.Body, s)
+			Walk(v, n.Body, s)
 			break
 		}
 
@@ -96,11 +98,11 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 			s = scope.Append(s, idents...)
 		}
 
-		walkBlockStmt(v, n.Body, initScope)
+		Walk(v, n.Body, initScope)
 
 	case *ast.RangeStmt:
 		if n.Tok == token.ILLEGAL { // e.g. `for range someSlice { ...`
-			walkBlockStmt(v, n.Body, scope.NewInsideExisting(s))
+			Walk(v, n.Body, scope.NewInsideExisting(s))
 			break
 		}
 
@@ -122,7 +124,7 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 			initScope = scope.Append(initScope, ident)
 		}
 
-		walkBlockStmt(v, n.Body, scope.NewInsideExisting(initScope))
+		Walk(v, n.Body, scope.NewInsideExisting(initScope))
 
 	case *ast.IfStmt:
 		if n.Init == nil {
@@ -142,7 +144,7 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 
 	case *ast.SwitchStmt:
 		if n.Init == nil {
-			walkBlockStmt(v, n.Body, scope.NewInsideExisting(s))
+			Walk(v, n.Body, scope.NewInsideExisting(s))
 			break
 		}
 
@@ -154,7 +156,7 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 			initScope = scope.Append(initScope, idents...)
 		}
 
-		walkBlockStmt(v, n.Body, scope.NewInsideExisting(initScope))
+		Walk(v, n.Body, scope.NewInsideExisting(initScope))
 
 	case *ast.TypeSwitchStmt:
 		if n.Init != nil {
@@ -215,6 +217,20 @@ func Walk(v Visitor, node ast.Node, existingScope scope.Scope) {
 	case *ast.ExprStmt:
 		Walk(v, n.X, s)
 
+	case *ast.GenDecl:
+		for _, spec := range n.Specs {
+			Walk(v, spec, s)
+		}
+
+	case *ast.ValueSpec:
+		for _, ident := range n.Names {
+			Walk(v, ident, s)
+		}
+
+		for _, expr := range n.Values {
+			Walk(v, expr, s)
+		}
+
 	}
 
 	v.Visit(nil, s)
@@ -228,14 +244,6 @@ func walkIfBlocks(v Visitor, ifStmt *ast.IfStmt, s scope.Scope) {
 	if ifStmt.Else != nil {
 		Walk(v, ifStmt.Else, scope.NewInsideExisting(s))
 	}
-}
-
-func walkBlockStmt(v Visitor, blockStmt *ast.BlockStmt, s scope.Scope) {
-	if blockStmt == nil {
-		return
-	}
-
-	Walk(v, blockStmt, s)
 }
 
 func declarationIdentsFromFuncType(funcType *ast.FuncType) []*ast.Ident {
@@ -268,7 +276,13 @@ func walkStmtList(v Visitor, list []ast.Stmt, s scope.Scope) {
 	// Note: stmts can add to scope for subsequent stmts
 
 	for _, stmt := range list {
-		Walk(v, stmt, s)
+		// Block statements within a statement list create their own scope
+		if blockStmt, ok := stmt.(*ast.BlockStmt); ok {
+			blockStmtScope := scope.NewInsideExisting(s)
+			Walk(v, blockStmt, blockStmtScope)
+		} else {
+			Walk(v, stmt, s)
+		}
 
 		// There are two cases where a given statement can add to the scope of subsequent statements in this func block
 		switch statement := stmt.(type) {
@@ -276,6 +290,8 @@ func walkStmtList(v Visitor, list []ast.Stmt, s scope.Scope) {
 		// (e.g. `var/const foo string`)
 		case *ast.DeclStmt:
 			if genDecl, ok := statement.Decl.(*ast.GenDecl); ok {
+				Walk(v, genDecl, s)
+
 				for _, spec := range genDecl.Specs {
 					if v, ok := spec.(*ast.ValueSpec); ok {
 						s = scope.Append(s, v.Names...)
@@ -285,6 +301,10 @@ func walkStmtList(v Visitor, list []ast.Stmt, s scope.Scope) {
 
 		// (e.g. `a, b := bar()`) <- NEED TO KNOW WHICH LHS ITEMS ARE NEW!
 		case *ast.AssignStmt:
+			for _, expr := range statement.Lhs {
+				Walk(v, expr, s)
+			}
+
 			for _, expr := range statement.Rhs {
 				Walk(v, expr, s)
 			}
