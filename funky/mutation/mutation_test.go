@@ -163,6 +163,16 @@ func TestFindInFiles(t *testing.T) {
 			variableName:     "a",
 			newValueRendered: "10",
 		},
+		{
+			location:         "testdata/mixed/main.go:228:2",
+			variableName:     "other.name",
+			newValueRendered: "\"lore\"",
+		},
+		{
+			location:         "testdata/mixed/main.go:231:2",
+			variableName:     "some.name",
+			newValueRendered: "\"barney\"",
+		},
 	}
 
 	fset := token.NewFileSet()

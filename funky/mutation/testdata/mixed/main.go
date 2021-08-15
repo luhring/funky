@@ -219,6 +219,18 @@ func funcWithParameters(a int) (result int) {
 	return
 }
 
+func otherPackageMaskedByLocalVar() {
+	type Person struct {
+		name string
+	}
+
+	other := Person{name: "data"} // intentional collision w/ package name
+	other.name = "lore"           // mutation
+
+	some := Person{name: "fred"}
+	some.name = "barney" // mutation
+}
+
 func main() {
 
 }
