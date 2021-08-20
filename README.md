@@ -1,6 +1,6 @@
 # funky 🎸
 
-a Go linter for functional programming
+A Go (golang) linter that finds mutations.
 
 ## Installation
 
@@ -14,18 +14,53 @@ go install github.com/luhring/funky/cmd/funky@main
 funky ./directory-with-go-files
 ```
 
-(Funky doesn't yet analyze directories **recursively** 😳 — this feature is at the top of the roadmap.)
+(**Note:** Funky doesn't yet analyze directories _recursively_. 😳)
 
-## Why do I need this?
+### Example output
 
-Like any opinionated linter, Funky **might add no value** for you!
+```
+add.go:134:3: mutation: "destfi" was assigned a new value: nil
+add.go:155:5: mutation: "d" was assigned a new value: filepath.Join(dest, path.Base(url.Path))
+add.go:157:7: mutation: "err" was assigned a new value: addURL(d, src, hostOwner, options.Hasher)
+add.go:175:4: mutation: "err" was assigned a new value: os.Stat(esrc)
+```
 
-Funky is a reaction to the recent rise in popularity of functional programming (FP). If you're interested in functional programming, and you're writing code in Go, Funky intends to help you assess your code's FP fitness and see opportunities for improvement.
+## What is a "mutation"?
+
+A mutation is when a variable's value changes. In the Go language, this means an assignment of a value to a variable anywhere **other than** where that variable is declared.
+
+For example, here's some Go code that has a few mutations:
+
+```go
+package main
+
+var x = 1 // Not a mutation. This is where `x` is declared.
+
+func main() {
+    x = 7 // MUTATION! (... of `x`, which is declared as a package-level variable.)
+
+    var output string // Not a mutation. This is where `output` is declared, and it's implicitly being assigned the zero-value of the `string` type, which is "".
+
+    if someCondition {
+    	output = "new value" // MUTATION!
+    }
+
+    print(output)
+}
+```
+
+
+## The mission: functional programming for Go
+
+Funky's objective is to take the approaches of functional programming and apply them to the Go language.
+
+The first task is to alert developers to the presence of **mutations**.
+
+Mutations introduce complexity in code. Because of this, they make code more likely to introduce bugs and more difficult to comprehend. Funky alerts you to the mutations in your code so you can spot opportunities for making your code less complex and more predictable — presumably, by adjusting your implementation to avoid mutations.
 
 ### "...but Go isn't a functional programming language"
 
-That's true (to some extent). But more and more, developers are realizing the benefits of applying coding practices _taken from the functional paradigm_ to more languages than just the canonical or esoteric FP ones. In particular, Funky is initially focused on helping Go developers detect and avoid **mutations** and **side effects** in their Go code — both of which can lead to bugs and difficulty in code comprehension.
-
+That's true (to some extent). But more developers are realizing the benefits of applying coding practices _taken from the functional paradigm_ to more languages than just the esoteric FP languages.
 
 ## Roadmap
 
@@ -40,25 +75,3 @@ That's true (to some extent). But more and more, developers are realizing the be
   - [ ] side effect detection
   - [ ] failure on side effect detection
   - [ ] configurable exceptions to side effect detection-based failing
-
-## Concepts
-
-### Mutation
-
-_"an instance of a variable assigned a value anywhere besides where that variable is declared"_
-
-For example, here's how Funky views the following Go code:
-
-```go
-package main
-
-var x int // not a mutation
-
-func main() {
-    x = 7 // mutation (... of x, which is declared as a package-level var)
-    
-    x := 8 // not a mutation (this is a new declaration of x)
-    
-    x = 9 // mutation (...of the NEW x, which is declared as a function-scoped var just above)
-}
-```
