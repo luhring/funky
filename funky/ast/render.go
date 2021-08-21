@@ -9,6 +9,7 @@ import (
 
 func Render(node ast.Node, fset *token.FileSet) string {
 	var buf bytes.Buffer
+
 	err := format.Node(&buf, fset, node)
 	if err != nil {
 		return ""

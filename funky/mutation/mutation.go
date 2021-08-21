@@ -31,7 +31,7 @@ func (m Mutation) Message(fset *token.FileSet) string {
 		newValue = "[unable to render expression]" // e.g. in the case of range stmt initializers
 	}
 
-	return fmt.Sprintf("%q was assigned a new value: %s", m.mutatedVarExpr, newValue)
+	return fmt.Sprintf("%q was assigned a new value: %s", funkyAST.Render(m.mutatedVarExpr, fset), newValue)
 }
 
 func (m Mutation) Type() finding.Type {
